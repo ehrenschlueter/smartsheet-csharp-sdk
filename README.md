@@ -71,7 +71,7 @@ use Visual Studio 2026 or later to build it.
 git clone https://github.com/smartsheet-platform/smartsheet-csharp-sdk.git
 ```
 
-In Visual Studio 2017 you can open the entire solution with the file **smartsheet-csharp-sdk-v2.sln**, or open the specific 
+In Visual Studio 2026 you can open the entire solution with the file **smartsheet-csharp-sdk-v2.sln**, or open the specific 
 project **smartsheet-csharp-sdk-v2.csproj**.
 
 ## Example Usage
