@@ -1,0 +1,137 @@
+name: CI/CD - Build, Test & Publish
+
+on:
+  push:
+    branches: [ master, main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ master, main ]
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  SOLUTION_FILE: smartsheet-csharp-sdk-v2.sln
+  PROJECT_FILE: smartsheet-csharp-sdk-v2.csproj
+  NUGET_FEED: https://api.nuget.org/v3/index.json
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Build & Test
+  # ──────────────────────────────────────────────
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.SOLUTION_FILE }}
+
+      - name: Build
+        run: dotnet build ${{ env.SOLUTION_FILE }} -c Release --no-restore
+
+      - name: Run tests
+        run: dotnet test ${{ env.SOLUTION_FILE }} -c Release --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: '**/TestResults/**'
+          retention-days: 30
+
+  # ──────────────────────────────────────────────
+  # Pack NuGet package (on every push to main)
+  # ──────────────────────────────────────────────
+  pack:
+    name: Pack NuGet
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore ${{ env.PROJECT_FILE }}
+
+      - name: Pack
+        run: dotnet pack ${{ env.PROJECT_FILE }} -c Release --no-restore -o ./artifacts
+
+      - name: Upload NuGet artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-package
+          path: ./artifacts/*.nupkg
+          retention-days: 30
+
+  # ──────────────────────────────────────────────
+  # Publish to NuGet.org (only on version tags)
+  # ──────────────────────────────────────────────
+  publish-nuget:
+    name: Publish to NuGet.org
+    needs: [build, pack]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment: nuget-production
+
+    steps:
+      - name: Download NuGet artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: nuget-package
+          path: ./artifacts
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Push to NuGet.org
+        run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source ${{ env.NUGET_FEED }} --skip-duplicate
+
+  # ──────────────────────────────────────────────
+  # Create GitHub Release (only on version tags)
+  # ──────────────────────────────────────────────
+  github-release:
+    name: Create GitHub Release
+    needs: [build, pack]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download NuGet artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: nuget-package
+          path: ./artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: RELEASE-3.0.0.md
+          files: ./artifacts/*.nupkg
+          generate_release_notes: false
+          draft: false
+          prerelease: false
