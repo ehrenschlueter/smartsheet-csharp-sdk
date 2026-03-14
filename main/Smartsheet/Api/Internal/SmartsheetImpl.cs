@@ -24,7 +24,6 @@ namespace Smartsheet.Api.Internal
     using System.Reflection;
     using System.Diagnostics;
     using NLog;
-    using RestSharp;
     using Api.Internal.Json;
     using Api.Internal.Util;
     using DefaultHttpClient = Api.Internal.Http.DefaultHttpClient;
@@ -39,7 +38,7 @@ namespace Smartsheet.Api.Internal
     /// Thread Safety: This class is thread safe because all its mutable fields are safe-guarded using AtomicReference to
     /// ensure atomic modifications, and also the underlying HttpClient and JsonSerializer interfaces are thread safe.
     /// </summary>
-    public class SmartsheetImpl : SmartsheetClient
+    public class SmartsheetImpl : SmartsheetClient, IDisposable
     {
         /// <summary>
         /// Represents the HttpClient.
@@ -284,8 +283,6 @@ namespace Smartsheet.Api.Internal
             Utils.ThrowIfNull(baseURI);
             Utils.ThrowIfEmpty(baseURI);
 
-            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-
             this.baseURI = new Uri(baseURI);
             this.accessToken = accessToken;
             if (jsonSerializer == null) {
@@ -295,8 +292,35 @@ namespace Smartsheet.Api.Internal
                 jsonSerializer = jsonNetSerializer;
             }
             this.jsonSerializer = jsonSerializer;
-            this.httpClient = httpClient == null ? new DefaultHttpClient(new RestClient(), this.jsonSerializer) : httpClient;
+            this.httpClient = httpClient == null ? new DefaultHttpClient(this.jsonSerializer) : httpClient;
             this.UserAgent = null;
+        }
+
+        private bool disposed = false;
+
+        /// <summary>
+        /// Releases all resources used by the SmartsheetImpl.
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Releases unmanaged and optionally managed resources.
+        /// </summary>
+        /// <param name="disposing">true to release both managed and unmanaged resources; false to release only unmanaged resources.</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposed)
+            {
+                if (disposing)
+                {
+                    this.httpClient.Close();
+                }
+                disposed = true;
+            }
         }
 
         /// <summary>
@@ -305,7 +329,7 @@ namespace Smartsheet.Api.Internal
         /// <exception cref="System.IO.IOException"> Signals that an I/O exception has occurred. </exception>
         ~SmartsheetImpl()
         {
-            this.httpClient.Close();
+            Dispose(false);
         }
 
         /// <summary>

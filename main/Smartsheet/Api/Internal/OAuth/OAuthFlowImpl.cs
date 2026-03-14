@@ -123,8 +123,6 @@ namespace Smartsheet.Api.Internal.OAuth
             Util.ThrowIfNull(clientId, clientSecret, redirectURL, authorizationURL, tokenURL, httpClient, jsonSerializer);
             Util.ThrowIfEmpty(clientId, clientSecret, redirectURL, authorizationURL, tokenURL);
 
-            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-
             this.clientId = clientId;
             this.clientSecret = clientSecret;
             this.redirectURL = redirectURL;
@@ -247,7 +245,11 @@ namespace Smartsheet.Api.Internal.OAuth
             {
                 expiresIn = Convert.ToInt64(map["expires_in"]);
             }
-            catch (Exception)
+            catch (FormatException)
+            {
+                expiresIn = 0L;
+            }
+            catch (OverflowException)
             {
                 expiresIn = 0L;
             }
@@ -290,8 +292,8 @@ namespace Smartsheet.Api.Internal.OAuth
             @params["redirect_uri"] = redirectURL;
             @params["hash"] = getHash(authorizationResult.Code);
 
-            // Generate the URL and then get the token
-            return RequestToken(GenerateURL(tokenURL, @params));
+            // Send the token request with parameters in the POST body
+            return RequestToken(tokenURL, @params);
         }
 
         /// <summary>
@@ -315,15 +317,15 @@ namespace Smartsheet.Api.Internal.OAuth
         public virtual Token RefreshToken(Token token)
         {
             // Create a map of the parameters
-            IDictionary<string, string> @params = new Dictionary<string, string>();
+            Dictionary<string, string> @params = new Dictionary<string, string>();
             @params["grant_type"] = "refresh_token";
             @params["client_id"] = clientId;
             @params["refresh_token"] = token.RefreshToken;
             @params["redirect_uri"] = redirectURL;
             @params["hash"] = getHash(token.RefreshToken);
 
-            // Generate the URL and get the token
-            return RequestToken(GenerateURL(tokenURL, @params));
+            // Send the token request with parameters in the POST body
+            return RequestToken(tokenURL, @params);
         }
 
         /// <summary>
@@ -338,14 +340,29 @@ namespace Smartsheet.Api.Internal.OAuth
         ///   - UnsupportedOAuthGrantTypeException : if the grant Type is invalid 
         ///   - OAuthTokenException : if any other error occurred during the operation
         /// </summary>
-        /// <param name="url"> the URL (with request parameters) from which the token will be requested </param>
+        /// <param name="url"> the base URL from which the token will be requested </param>
+        /// <param name="parameters"> the form parameters to send in the POST body </param>
         /// <returns> the token </returns>
         /// <exception cref="OAuthTokenException"> the o auth token exception </exception>
         /// <exception cref="JSONSerializationException"> the JSON serializer exception </exception>
         /// <exception cref="System.UriFormatException"> the URI syntax exception </exception>
         /// <exception cref="InvalidRequestException"> the invalid request exception </exception>
-        private Token RequestToken(string url)
+        private Token RequestToken(string url, IDictionary<string, string> parameters)
         {
+
+            // Build form-encoded body from parameters
+            StringBuilder bodyBuilder = new StringBuilder();
+            bool first = true;
+            foreach (KeyValuePair<string, string> param in parameters)
+            {
+                if (!first) bodyBuilder.Append("&");
+                first = false;
+                bodyBuilder.Append(Uri.EscapeDataString(param.Key));
+                bodyBuilder.Append("=");
+                if (param.Value != null)
+                    bodyBuilder.Append(Uri.EscapeDataString(param.Value));
+            }
+            byte[] bodyBytes = Encoding.UTF8.GetBytes(bodyBuilder.ToString());
 
             // Create the request and send it to get the response/token.
             HttpRequest request = new HttpRequest();
@@ -353,6 +370,13 @@ namespace Smartsheet.Api.Internal.OAuth
             request.Method = HttpMethod.POST;
             request.Headers = new Dictionary<string, string>();
             request.Headers["Content-Type"] = "application/x-www-form-urlencoded";
+
+            Http.HttpEntity entity = new Http.HttpEntity();
+            entity.ContentType = "application/x-www-form-urlencoded";
+            entity.Content = bodyBytes;
+            entity.ContentLength = bodyBytes.Length;
+            request.Entity = entity;
+
             HttpResponse response = httpClient.Request(request);
 
             // Create a map of the response
@@ -407,7 +431,11 @@ namespace Smartsheet.Api.Internal.OAuth
             {
                 expiresIn = Convert.ToInt64(Convert.ToString(map["expires_in"]));
             }
-            catch (Exception)
+            catch (FormatException)
+            {
+                expiresIn = 0L;
+            }
+            catch (OverflowException)
             {
                 expiresIn = 0L;
             }
@@ -648,8 +676,11 @@ namespace Smartsheet.Api.Internal.OAuth
         private string getHash(string str)
         {
             string doHash = string.Concat(this.clientSecret, "|", str);
-            SHA256 sha = new SHA256Managed();
-            byte[] hash = sha.ComputeHash(Encoding.UTF8.GetBytes(doHash));
+            byte[] hash;
+            using (SHA256 sha = SHA256.Create())
+            {
+                hash = sha.ComputeHash(Encoding.UTF8.GetBytes(doHash));
+            }
             string hashStr = "";
             for (int i = 0; i < (int)hash.Length; i++)
             {

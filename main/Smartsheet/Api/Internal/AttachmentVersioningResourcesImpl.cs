@@ -132,7 +132,7 @@ namespace Smartsheet.Api.Internal
             FileInfo fi = new FileInfo(file);
             HttpRequest request = CreateHttpRequest(new Uri(this.Smartsheet.BaseURI, path), HttpMethod.POST);
 
-            request.Headers["Content-Disposition"] = "attachment; filename=\"" + fi.Name + "\"";
+            request.Headers["Content-Disposition"] = "attachment; filename=\"" + Utility.Utility.SanitizeFilename(fi.Name) + "\"";
 
             HttpEntity entity = new HttpEntity();
             entity.ContentType = contentType;

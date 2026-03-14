@@ -19,10 +19,8 @@
 using System;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
-#if !NETSTANDARD2_0
-using System.Management;
-#endif
 
 namespace Smartsheet.Api.Internal.Utility
 {
@@ -39,42 +37,7 @@ namespace Smartsheet.Api.Internal.Utility
                 .GetCustomAttribute<TargetFrameworkAttribute>()?
                 .FrameworkName;
 
-#if NETSTANDARD2_0
-            return framework + "-" + System.Runtime.InteropServices.RuntimeInformation.OSDescription;
-#else
-            string result = string.Empty;
-            ManagementObjectCollection.ManagementObjectEnumerator enumerator = null;
-
-            try
-            {
-                enumerator = (
-                        new ManagementObjectSearcher("SELECT Caption FROM Win32_OperatingSystem")
-                    ).Get()
-                    .GetEnumerator();
-
-                if (enumerator.MoveNext())
-                {
-                    result = ((ManagementObject)enumerator.Current)["Caption"].ToString();
-                }
-            }
-            catch (UnauthorizedAccessException)
-            {
-                // Hosted solution - Many not allow access to WMI
-                return "Hosted";
-            }
-            catch (System.NotImplementedException)
-            {
-                return ".Net Core-" + System.Environment.OSVersion.VersionString;
-            }
-            finally
-            {
-                if (enumerator != null)
-                {
-                    ((IDisposable)enumerator).Dispose();
-                }
-            }
-            return result + "-" + framework;
-#endif
+            return framework + "-" + RuntimeInformation.OSDescription;
         }
 
         /**
@@ -101,6 +64,19 @@ namespace Smartsheet.Api.Internal.Utility
                     throw new System.ArgumentException();
                 }
             }
+        }
+
+        public static string SanitizeFilename(string filename)
+        {
+            if (filename == null) return null;
+            char[] invalid = Path.GetInvalidFileNameChars();
+            System.Text.StringBuilder sb = new System.Text.StringBuilder(filename.Length);
+            foreach (char c in filename)
+            {
+                if (Array.IndexOf(invalid, c) < 0 && c >= ' ')
+                    sb.Append(c);
+            }
+            return sb.ToString();
         }
 
         public static byte[] ReadAllBytes(BinaryReader reader)

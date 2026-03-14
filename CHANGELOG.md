@@ -6,6 +6,48 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-03-14
+### Changed
+- **BREAKING:** Retargeted SDK from .NET Framework 4.5.2 / .NET Standard 2.0 to **.NET 10 / .NET Standard 2.0**
+- **BREAKING:** Upgraded RestSharp from 106.6.9 to **114.0.0** — `DefaultHttpClient` constructor and internal HTTP handling rewritten for new RestSharp API
+- **BREAKING:** `DefaultHttpClient` now uses `RestClientOptions.RedirectOptions` instead of `RestClientOptions.FollowRedirects` for redirect configuration
+- **BREAKING:** `DefaultHttpClient` constructor accepting `JsonSerializer` no longer creates a `RestClient` externally; clients extending `DefaultHttpClient` with proxy support must use `RestClientOptions` with `RedirectOptions` and `Proxy` properties
+- **BREAKING:** Removed `ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12` from `SmartsheetImpl` and `OAuthFlowImpl` — TLS 1.2+ is enforced by default in modern .NET
+- Upgraded Newtonsoft.Json from 12.0.2 to **13.0.4**
+- Upgraded NLog from 4.6.3 to **6.1.1**
+- Replaced `System.Web.HttpUtility.UrlEncode` with `System.Net.WebUtility.UrlEncode` in `QueryUtil`
+- Replaced obsolete `SHA256Managed` with `SHA256.Create()` in `OAuthFlowImpl`
+- Replaced Windows-only `System.Management` WMI OS detection with cross-platform `RuntimeInformation.OSDescription` in `Util.GetOSFriendlyName()`
+- Removed `System.Management` assembly reference (no longer needed)
+
+### Removed
+- **BREAKING:** Dropped .NET Framework 4.5.2 (`net452`) target — SDK now targets `net10.0` and `netstandard2.0` only
+- Removed legacy `Smartsheet-csharp-sdk.csproj` (old-style project file)
+- Removed .NET Framework 4.5.2 test and sample projects from solution (`integration-test-sdk-net452`, `sdk-csharp-sample-net452`, `mock-api-test-sdk-net452`)
+- Removed Sandcastle documentation project (`smartsheet-csharp-sdk-docs-v2`) from solution
+
+### Security
+- **OAuth token request parameters** (`client_id`, `code`, `hash`, `refresh_token`) are now sent in the POST body instead of URL query strings, preventing credential leakage in server logs and proxies
+- **Response body logging** at DEBUG level now redacts `access_token`, `refresh_token`, and `token` fields to prevent token leakage in log files
+- **Default NLog configuration** changed from DEBUG/INFO to WARN level, preventing sensitive request/response data from being written to logs out-of-the-box
+- **Content-Disposition header injection** mitigated by sanitizing filenames (stripping control characters) across all attachment upload endpoints
+- **Backoff jitter** now uses a static `Random` instance instead of creating a new instance per retry, improving jitter distribution and preventing predictable backoff patterns
+- **`ShouldRetry` null guard** added to prevent `NullReferenceException` when the server returns an empty response body
+- **`SmartsheetImpl` now implements `IDisposable`** for deterministic resource cleanup; consumers can now use `using` blocks instead of relying on the finalizer
+- **Exception handling** in OAuth `expires_in` parsing narrowed from `catch (Exception)` to `catch (FormatException)` / `catch (OverflowException)` to avoid silently swallowing fatal exceptions
+
+### Fixed
+- Fixed NuGet package to correctly include `LICENSE.txt` and `logo.png`
+- Resolved `System.Text.Json` transitive dependency vulnerability (NU1903) by upgrading to latest dependency chain
+
+### Developer/Test Changes
+- Upgraded Microsoft.NET.Test.Sdk from 1.4.0 to **18.3.0**
+- Upgraded MSTest.TestAdapter and MSTest.TestFramework from 1.4.0 to **4.1.0**
+- Upgraded coverlet.msbuild from 1.0.0 to **8.0.0**
+- Migrated `[ExpectedException]` attribute usage to `Assert.ThrowsExactly<T>()` (MSTest 4.x)
+- Migrated `Assert.Fail` format-string overloads to `string.Format` wrapper (MSTest 4.x)
+- Retargeted all test and sample projects from `netcoreapp2.0` to `net10.0`
+
 ## [2.126.0] - 2021-05-24
 ### Added
 - add support for column formulas

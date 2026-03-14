@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Web;
+using System.Net;
 
 namespace Smartsheet.Api.Internal.Util
 {
@@ -13,6 +13,8 @@ namespace Smartsheet.Api.Internal.Util
     public static class QueryUtil
     {
         //public QueryUtil() { }
+
+        private static readonly Regex WordSplitRegex = new Regex(@"[^_]+", RegexOptions.Compiled);
 
         /// <summary>
         /// <para>
@@ -32,7 +34,7 @@ namespace Smartsheet.Api.Internal.Util
                 return string.Empty;
             }
 
-            Regex regex = new Regex(@"[^_]+");
+            Regex regex = WordSplitRegex;
             List<string> includesList = new List<string>();
             foreach (T element in include)
             {
@@ -104,12 +106,12 @@ namespace Smartsheet.Api.Internal.Util
                         {
                             result.Append("&");
                         }
-                        result.Append(HttpUtility.UrlEncode(entry.Key, Encoding.UTF8));
+                        result.Append(WebUtility.UrlEncode(entry.Key));
                         result.Append("=");
 
                         if (entry.Value != null)
                         {
-                            result.Append(HttpUtility.UrlEncode(entry.Value, Encoding.UTF8));
+                            result.Append(WebUtility.UrlEncode(entry.Value));
                         }
                     }
                 }

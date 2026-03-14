@@ -35,7 +35,7 @@ namespace TestSDKMockAPI
             try
             {
                 action();
-                Assert.Fail("Call suceeded. Expected exception of type: {0} with message: {1}", (typeof(TException).Name), expectedMessage);
+                Assert.Fail(string.Format("Call suceeded. Expected exception of type: {0} with message: {1}", typeof(TException).Name, expectedMessage));
             }
             catch (TException ex)
             {
@@ -47,7 +47,7 @@ namespace TestSDKMockAPI
             }
             catch (Exception ex)
             {
-                Assert.Fail("Expected exception of type: {0}, actual type: {1}", (typeof(TException).Name), ex.GetType().Name);
+                Assert.Fail(string.Format("Expected exception of type: {0}, actual type: {1}", typeof(TException).Name, ex.GetType().Name));
             }
         }
     }
