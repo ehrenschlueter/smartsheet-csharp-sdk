@@ -5,24 +5,44 @@ This is a C# SDK to simplify connecting to the [Smartsheet API](https://smartshe
 ## Notice
 This repo has moved to the Smartsheet Organization on GitHub and can be accessed [here](https://github.com/smartsheet/smartsheet-csharp-sdk).
 
-**NOTE ON 2.93.0 RELEASE**
+**⚠️ UPGRADING TO v3.0.0**
+
+Version 3.0.0 is a major release that upgrades the SDK to **.NET 10** and includes several breaking changes:
+
+- **Target frameworks** changed from `net452` / `netstandard2.0` to **`net10.0`** / `netstandard2.0` — .NET Framework 4.x is no longer supported
+- **RestSharp** upgraded from 106.x to **114.0.0** — if you extend `DefaultHttpClient` (e.g. for proxy support), you must update your constructor to use `RestClientOptions` with `RedirectOptions`
+- **`SmartsheetImpl` now implements `IDisposable`** — you can now use `using` blocks for deterministic cleanup
+- **Security hardening** — OAuth tokens are no longer leaked in URL query strings or debug logs
+- **All dependencies upgraded** to latest versions (Newtonsoft.Json 13.0.4, NLog 6.1.1, RestSharp 114.0.0)
+
+For a complete migration guide, see **[MIGRATION-3.0.md](MIGRATION-3.0.md)**. For the full list of changes, see **[CHANGELOG.md](CHANGELOG.md)**.
+
+<details>
+<summary>Note on 2.93.0 release (click to expand)</summary>
 
 While investigating issue [#113](https://github.com/smartsheet-platform/smartsheet-csharp-sdk/issues/113), the API/SDK team discovered that Newtonsoft Json.NET, by default, deserializes JSON strings that "look like" dates into C# DateTime objects. 
 You can read the discussion [here](https://github.com/JamesNK/Newtonsoft.Json/issues/862). Smartsheet believes this to 
 be undesirable behavior (since JSON doesn't have a date construct, all JSON strings should be handled as C# strings), 
-therefore, this release changes the global behavior to disable this feature of Json.NET. If you have implementations that rely on the previous behavior, there is an opt-out feature that you can use. An example of the opt-out code is here:
+therefore, release 2.93.0 changed the global behavior to disable this feature of Json.NET. If you have implementations that rely on the previous behavior, there is an opt-out feature that you can use. An example of the opt-out code is here:
 
 ```csharp
 SmartsheetClient smartsheet = new SmartsheetBuilder()
-    .SetAccessToken("JKlMNOpQ12RStUVwxYZAbcde3F5g6hijklM789")       // TODO: Set your API access in environment variable SMARTSHEET_ACCESS_TOKEN or else here
+    .SetAccessToken("JKlMNOpQ12RStUVwxYZAbcde3F5g6hijklM789")
     .SetHttpClient(new RetryHttpClient())
     .SetDateTimeFixOptOut(true)
     .Build();
 ```
+</details>
    
 ## System Requirements
 
-The SDK supports C# version 4.0 or later and targets .NET Framework version 4.5.2 or later or .NET Standard 2.0 or later. 
+The SDK targets **.NET 10** and **.NET Standard 2.0**. You need the .NET 10 SDK (or later) to build from source.
+
+| Target | Minimum Runtime |
+|---|---|
+| `net10.0` | .NET 10 |
+| `netstandard2.0` | .NET 6+ / .NET Core 2.0+ |
+
 In addition, we support any .NET language compatible with those platform versions.
 
 ## Installation
@@ -117,12 +137,9 @@ The generated SDK class documentation is here: [http://smartsheet-platform.githu
 If you would like to contribute a change to the SDK, please fork a branch and then submit a pull request. [More info here.](https://help.github.com/articles/using-pull-requests)
 
 ## Version Numbers
-Starting from the v2.68.0 release, Smartsheet SDKs will use a new versioning strategy. Since all users are on the 
-Smartsheet API 2.0, the SDK version numbers will start with 2. The 2nd number will be an internal reference number.
-The 3rd number is for incremental changes.
+Starting with v3.0.0, the SDK follows [Semantic Versioning](https://semver.org/). Major version bumps indicate breaking changes.
 
-For example, v2.68.0 means that you are using our 2.0 version of the API, the API is synced internally to a tag of 68,
-and then if there are numbers after the last decimal, that will indicate a minor change.
+Prior to v3.0.0, SDK version numbers started with 2 (matching the Smartsheet API version), with the 2nd number as an internal reference and the 3rd for incremental changes.
 
 ## Support
 If you have any questions or issues with this SDK please post on [StackOverflow using the tag "smartsheet-api"](http://stackoverflow.com/questions/tagged/smartsheet-api) or contact us directly at devrel@smartsheet.com.
