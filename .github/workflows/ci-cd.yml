@@ -111,11 +111,8 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Restore
-        run: dotnet restore ${{ env.PROJECT_FILE }}
-
       - name: Pack
-        run: dotnet pack ${{ env.PROJECT_FILE }} -c Release --no-restore -o ./artifacts
+        run: dotnet pack ${{ env.PROJECT_FILE }} -c Release -o ./artifacts
 
       - name: Upload NuGet artifact
         uses: actions/upload-artifact@v4
