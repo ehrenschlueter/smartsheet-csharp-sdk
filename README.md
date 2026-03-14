@@ -65,7 +65,7 @@ Install-Package smartsheet-csharp-sdk
 
 ### Compile From Source
 You can download and compile the source code for the SDK from Github. Use [git](http://git-scm.com/) to fetch it and 
-use Visual Studio 2017 or later to build it.
+use Visual Studio 2026 or later to build it.
 
 ```dos
 git clone https://github.com/smartsheet-platform/smartsheet-csharp-sdk.git
